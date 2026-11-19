@@ -797,9 +797,9 @@ const target = order.items.find(it => it.code === code && !it.found);
   if(alreadyGot){
     showMsg(`${alreadyGot.name} 录过了！！蠢得要鼠`, false);
   }else if(target && !target.revealed){
-    showMsg("这啥啊？", false);
+    showMsg("这啥啊？这都能错", false);
   }else{
-    showMsg("编码不对，再去背<>", false);
+    showMsg("编码不对，再去背！", false);
   }
 
   codeDisplay.classList.remove("shake");
