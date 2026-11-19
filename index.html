@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>侯雅韵专属收银模拟</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+body{
+  height:100dvh;
+  background:linear-gradient(
+    180deg,
+    rgba(255,161,161,1) 0%,
+    rgba(255,216,216,1) 45%,
+    rgba(224,255,255,1) 100%
+  );
+  font-family:system-ui,-apple-system,sans-serif;
+  color:rgba(38,53,74,1);
+  overflow:hidden;
+  user-select:none;
+}
+
+#app{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  padding:10px;
+  gap:8px;
+}
+
+/* ===== 顶部统计 ===== */
+header{
+  display:flex;
+  gap:8px;
+  flex:none;
+}
+
+.stat{
+  flex:1;
+  background:rgba(255,255,255,.45);
+  border:1px solid rgba(255,255,255,.75);
+  border-radius:10px;
+  padding:6px 4px;
+  text-align:center;
+  font-size:11px;
+  color:rgba(90,110,135,1);
+  cursor:pointer;
+}
+
+.stat b{
+  display:block;
+  font-size:17px;
+  color:rgba(38,53,74,1);
+  margin-top:2px;
+font-weight:700;
+}
+
+.stat.wancheng b{ color:rgba(30,150,85,1); }
+.stat.chaoshi  b{ color:rgba(210,65,65,1); }
+.stat.ticket   b{ color:rgba(190,120,20,1); }
+.stat.jilu     b{ color:rgba(105,95,190,1); }
+
+.stat.ticket:active{ background:rgba(255,255,255,.7); }
+.stat.jilu:active{ background:rgba(255,255,255,.7); }
+
+/* ===== 中间区域 ===== */
+main{
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.customer{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:none;
+}
+
+.face{
+  font-size:46px;
+  width:62px;
+  height:62px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.5);
+  border:1px solid rgba(255,255,255,.8);
+  border-radius:50%;
+  flex:none;
+  transition:.2s;
+}
+
+.bubble{
+  flex:1;
+  background:rgba(255,255,255,.62);
+  border:1px solid rgba(255,255,255,.85);
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:14px;
+  line-height:1.5;
+  color:rgba(38,53,74,1);
+  min-height:62px;
+  display:flex;
+  align-items:center;
+font-weight:600;
+}
+
+.progress{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  background:rgba(255,255,255,.35);
+  border:1px solid rgba(255,255,255,.6);
+  border-radius:12px;
+  padding:12px;
+  font-size:13px;
+  color:rgba(90,110,135,1);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.progress-title{
+  font-size:12px;
+  color:rgba(90,110,135,1);
+  margin-bottom:2px;
+}
+
+.done-item{
+  background:rgba(120,220,160,.32);
+  border:1px solid rgba(90,200,140,.55);
+  border-radius:8px;
+  padding:8px 10px;
+  font-size:14px;
+  color:rgba(20,90,55,1);
+  font-weight:600;
+  display:flex;
+  justify-content:space-between;
+}
+
+/* 大按钮：开始 / 下一位 */
+.big-btn{
+  background:rgba(70,120,190,1);
+  color:#fff;
+  border-radius:12px;
+  padding:16px;
+  text-align:center;
+  font-size:16px;
+  font-weight:700;
+  margin-top:6px;
+  touch-action:manipulation;
+}
+.big-btn:active{ background:rgba(50,95,160,1); transform:scale(.98); }
+
+/* ===== 底部 ===== */
+footer{
+  flex:none;
+  display:flex;
+  flex-direction:column;
+gap:8px;
+}
+
+.timer{
+  height:12px;
+  background:rgba(255,255,255,.45);
+  border-radius:6px;
+  overflow:hidden;
+}
+
+#timerFill{
+  height:100%;
+  width:100%;
+  background:rgba(94,224,138,1);
+  border-radius:6px;
+}
+
+/* 编码显示区（不触发系统键盘） */
+.code-display{
+  height:46px;
+  background:rgba(255,255,255,.62);
+  border:2px solid rgba(255,255,255,.85);
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  font-family:ui-monospace,Menlo,monospace;
+  letter-spacing:4px;
+  color:rgba(38,53,74,1);
+}
+.code-display.empty{
+  font-size:13px;
+  letter-spacing:0;
+  color:rgba(120,140,160,1);
+  font-family:system-ui;
+}
+.code-display.shake{ animation:shake .25s; }
+
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-7px)}
+  75%{transform:translateX(7px)}
+}
+
+#msg{
+  height:16px;
+  font-size:12px;
+  text-align:center;
+  color:rgba(210,65,65,1);
+}
+#msg.ok{ color:rgba(30,150,85,1); }
+
+/* 数字键盘：桌面小键盘布局（789 在上） */
+.keypad{
+  display:grid;
+grid-template-columns:repeat(3,1fr);
+  gap:6px;
+  flex:none;
+}
+.key{
+  height:42px;
+  background:rgba(255,255,255,.62);
+  border:1px solid rgba(255,255,255,.9);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  font-weight:600;
+  color:rgba(38,53,74,1);
+  touch-action:manipulation;
+}
+.key:active{
+  background:rgba(255,255,255,.92);
+  transform:scale(.97);
+}
+.key.del{ color:rgba(205,75,75,1); }
+.key.ok{
+  color:#fff;
+  background:rgba(70,120,190,1);
+  border-color:rgba(70,120,190,1);
+}
+.key.ok:active{ background:rgba(50,95,160,1); }
+
+/* ===== 小票弹窗 ===== */
+.receipt-mask{
+  position:fixed;
+  inset:0;
+  background:rgba(20,30,45,.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:10;
+}
+.receipt-mask.show{ display:flex; }
+
+.receipt{
+  width:100%;
+  max-width:380px;
+  max-height:76vh;
+  overflow-y:auto;
+  background:rgba(255,252,245,1);
+  border-radius:14px;
+  padding:16px;
+  color:rgba(40,40,40,1);
+box-shadow:0 10px 30px rgba(0,0,0,.3);
+}
+
+.receipt h2{
+  font-size:16px;
+  text-align:center;
+  margin-bottom:12px;
+  color:rgba(40,40,40,1);
+  letter-spacing:2px;
+}
+
+.receipt-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 0;
+  border-bottom:1px dashed rgba(180,180,180,.6);
+  font-size:14px;
+}
+.receipt-item .nm{ flex:1; font-weight:600; }
+.receipt-item .cd{
+  font-family:ui-monospace,Menlo,monospace;
+  font-size:13px;
+  letter-spacing:1px;
+  color:rgba(40,100,180,1);
+  background:rgba(200,225,255,.7);
+  padding:3px 7px;
+  border-radius:5px;
+}
+.receipt-item .qty{
+  font-weight:700;
+  color:rgba(190,120,20,1);
+  min-width:26px;
+  text-align:right;
+}
+.receipt-item.got{
+  opacity:.45;
+  text-decoration:line-through;
+}
+
+.receipt-close{
+  margin-top:14px;
+  width:100%;
+  height:44px;
+  border:none;
+  border-radius:10px;
+  background:rgba(70,120,190,1);
+  color:#fff;
+  font-size:15px;
+  font-weight:600;
+}
+.receipt-close:active{ background:rgba(50,95,160,1); }
+
+/* ===== 记录弹窗 ===== */
+.hist-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:11px 0;
+  border-bottom:1px dashed rgba(180,180,180,.6);
+}
+.hist-date{
+  font-size:13px;
+  font-weight:600;
+  color:rgba(40,40,40,1);
+  min-width:86px;
+}
+.hist-nums{
+  display:flex;
+  gap:6px;
+  font-size:11px;
+}
+.hist-nums span{
+  padding:3px 6px;
+  border-radius:5px;
+  white-space:nowrap;
+}
+.hist-done{ background:rgba(200,240,215,.9); color:rgba(20,90,55,1); }
+.hist-to  { background:rgba(255,220,220,.9); color:rgba(170,45,45,1); }
+.hist-wr  { background:rgba(255,240,210,.9); color:rgba(150,105,20,1); }
+
+.hist-empty{
+  text-align:center;
+  color:rgba(150,150,150,1);
+  font-size:13px;
+  padding:24px 0;
+}
+
+.hist-clear{
+  margin-top:14px;
+  width:100%;
+  height:38px;
+  border:none;
+  border-radius:8px;
+  background:rgba(255,235,235,1);
+  color:rgba(190,60,60,1);
+  font-size:13px;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <header>
+    <div class="stat wancheng">完成<b id="doneCount">0</b></div>
+<div class="stat chaoshi">超时<b id="timeoutCount">0</b></div>
+    <div class="stat ticket" id="ticketBtn">小票<b>点我看</b></div>
+    <div class="stat jilu" id="historyBtn">记录<b>看历史</b></div>
+  </header>
+
+  <main>
+    <div class="customer">
+      <div class="face" id="face">🥶</div>
+      <div class="bubble" id="bubble">等客人上门…</div>
+    </div>
+
+    <div class="progress" id="progress"></div>
+  </main>
+
+  <footer>
+    <div class="timer"><div id="timerFill"></div></div>
+    <div class="code-display empty" id="codeDisplay">输入商品编码</div>
+    <div id="msg"></div>
+    <div class="keypad" id="keypad">
+      <div class="key" data-k="7">7</div>
+      <div class="key" data-k="8">8</div>
+      <div class="key" data-k="9">9</div>
+      <div class="key" data-k="4">4</div>
+      <div class="key" data-k="5">5</div>
+      <div class="key" data-k="6">6</div>
+      <div class="key" data-k="1">1</div>
+      <div class="key" data-k="2">2</div>
+      <div class="key" data-k="3">3</div>
+      <div class="key del" data-k="del">删除</div>
+<div class="key" data-k="0">0</div>
+      <div class="key ok" data-k="ok">确认</div>
+    </div>
+  </footer>
+
+</div>
+
+<!-- 小票弹窗 -->
+<div class="receipt-mask" id="receiptMask">
+  <div class="receipt">
+    <h2>小 票</h2>
+    <div id="receiptBody"></div>
+    <button class="receipt-close" id="receiptClose">收起小票</button>
+  </div>
+</div>
+
+<!-- 记录弹窗 -->
+<div class="receipt-mask" id="historyMask">
+  <div class="receipt">
+    <h2>记 录</h2>
+    <div id="historyBody"></div>
+    <button class="receipt-close" id="historyClose">收起记录</button>
+  </div>
+</div>
+
+<script>
+/* ============================================
+   可调参数
+   ============================================ */
+const TIME_BASE      = 3.0;    // 基础时间（秒）
+const TIME_PER_KIND  = 3.2;    // 每样商品额外秒数
+const BIG_ORDER_RATE = 0.15;   // 大单概率
+const SMALL_MIN = 2, SMALL_MAX = 4;
+const BIG_MIN   = 5, BIG_MAX   = 6;
+const QTY_3_RATE = 0.15;
+const QTY_2_RATE = 0.45;
+const ANNOUNCE_GREET = 1400;   // 打招呼停留（毫秒）
+const ANNOUNCE_MIN = 1200;     // 每报一样最快间隔
+const ANNOUNCE_MAX = 2400;     // 每报一样最慢间隔
+/* ============================================
+   商品库
+   ============================================ */
+const GOODS = [
+  {code:"64210333", name:"豆沙包"},
+  {code:"64210334", name:"菜包"},
+  {code:"64210335", name:"梅干菜"},
+  {code:"64210336", name:"肉包"},
+  {code:"64210337", name:"豆腐包"},
+  {code:"6420042",  name:"叉烧包"},
+  {code:"64200285", name:"咖喱牛肉包"},
+  {code:"642791",   name:"香菇鸡肉"},
+  {code:"64200282", name:"藤椒鸡肉"},
+  {code:"64200246", name:"牛肉包"},
+  {code:"642184",   name:"原味浆"},
+  {code:"642185",   name:"红枣浆"},
+  {code:"64200351", name:"鸡蛋"},
+  {code:"64000021", name:"溏心蛋"},
+  {code:"6420114",  name:"鲜肉粽"},
+  {code:"64210555", name:"东坡肉"},
+  {code:"64200334", name:"酱肉包"},
+  {code:"64200332", name:"酸菜肉包"},
+  {code:"64200343", name:"香辣粉丝豆腐"},
+  {code:"64200281", name:"雪菜笋丝"},
+  {code:"64200341", name:"老坛酸菜"},
+  {code:"642800",   name:"奶黄包"},
+  {code:"64210073", name:"红糖馒头"},
+  {code:"6420043",  name:"奥尔良"},
+  {code:"64200316", name:"鲜肉小笼"},
+  {code:"64200339", name:"肉丁烧麦"},
+  {code:"64210197", name:"剁椒花卷"},
+{code:"64210104", name:"蒸饺"},
+  {code:"64200299", name:"白糯玉米"},
+  {code:"64210103", name:"黄糯玉米"},
+  {code:"64210140", name:"水果玉米"},
+  {code:"6420113",  name:"蛋黄粽"},
+  {code:"64210566", name:"酸豆角"}
+];
+
+
+/* 报单时用的口语 */
+const OPENERS    = ["我不好，我不想上学！，", "早啊，打工人，", "冷死了！记得多穿点侯雅韵，","早啊，", "您好，"];
+const CONNECTORS = ["我要一个", "再来一个", "还有", "给老娘来个", "再要", "再来个"];
+const CLOSERS    = ["好，就这些。", "就这些，快点啊，慢死了侯雅韵。", "好了，就这么多。", "嗯…就这些，可以了。"];
+
+/* ============================================
+   元素
+   ============================================ */
+const faceEl      = document.getElementById("face");
+const bubbleEl    = document.getElementById("bubble");
+const progressEl  = document.getElementById("progress");
+const timerFill   = document.getElementById("timerFill");
+const codeDisplay = document.getElementById("codeDisplay");
+const keypadEl    = document.getElementById("keypad");
+const msgEl       = document.getElementById("msg");
+const doneCountEl = document.getElementById("doneCount");
+const timeoutCountEl = document.getElementById("timeoutCount");
+const ticketBtn   = document.getElementById("ticketBtn");
+const receiptMask = document.getElementById("receiptMask");
+const receiptBody = document.getElementById("receiptBody");
+const receiptClose= document.getElementById("receiptClose");
+const historyBtn  = document.getElementById("historyBtn");
+const historyMask = document.getElementById("historyMask");
+const historyBody = document.getElementById("historyBody");
+const historyClose= document.getElementById("historyClose");
+
+/* ============================================
+   本地记录（存在手机浏览器本地，不联网）
+   ============================================ */
+const STORE_KEY = "shouyin_records_v1";
+
+function todayKey(){
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+
+function loadRecords(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return {};
+    const obj = JSON.parse(raw);
+    return (obj && typeof obj === "object") ? obj : {};
+}catch(e){
+    return {};
+  }
+}
+
+function saveRecords(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(records));
+  }catch(e){}
+}
+
+let records = loadRecords();
+let today = todayKey();
+
+function todayData(){
+  const t = todayKey();
+  if(t !== today) today = t;                 // 跨天了自动换新的一天
+  if(!records[today]) records[today] = { done:0, timeout:0, wrong:0 };
+  return records[today];
+}
+
+function bump(field){
+  const d = todayData();
+  d[field] = (d[field] || 0) + 1;
+  saveRecords();
+  refreshStats();
+}
+
+/* ============================================
+   状态
+   ============================================ */
+let order = null;
+let phase = "idle";   // idle / announcing / playing / done
+let codeBuffer = "";
+
+let announceTimer = null;
+let tickTimer = null;
+
+/* ============================================
+   工具
+   ============================================ */
+function randInt(min, max){
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function pick(arr){
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function createOrder(){
+  const isBig = Math.random() < BIG_ORDER_RATE;
+  const kinds = isBig ? randInt(BIG_MIN, BIG_MAX) : randInt(SMALL_MIN, SMALL_MAX);
+
+  const pool = GOODS.slice();
+  const items = [];
+
+  for(let i = 0; i < kinds; i++){
+    const idx = Math.floor(Math.random() * pool.length);
+    const g = pool.splice(idx, 1)[0];
+
+    let qty = 1;
+    const roll = Math.random();
+    if(roll < QTY_3_RATE) qty = 3;
+    else if(roll < QTY_3_RATE + QTY_2_RATE) qty = 2;
+
+    items.push({
+      code: g.code,
+      name: g.name,
+      qty: qty,
+      revealed: false,   // 客人有没有报过这一样
+      found: false       // 玩家有没有录对
+    });
+  }
+  return items;
+}
+
+function refreshStats(){
+  const d = todayData();
+  doneCountEl.textContent = d.done || 0;
+  timeoutCountEl.textContent = d.timeout || 0;
+}
+
+function showMsg(text, isOk){
+  msgEl.textContent = text;
+  msgEl.classList.toggle("ok", !!isOk);
+}
+
+function renderCode(){
+  if(codeBuffer === ""){
+    codeDisplay.textContent = "输入商品编码";
+    codeDisplay.classList.add("empty");
+}else{
+    codeDisplay.textContent = codeBuffer;
+    codeDisplay.classList.remove("empty");
+  }
+}
+
+/* 画进度区：已录入的 + 底部按钮 */
+function updateProgress(extraText){
+  progressEl.innerHTML = "";
+
+  const total = order.items.length;
+  const got = order.items.filter(it => it.found).length;
+  const said = order.items.filter(it => it.revealed).length;
+
+  const title = document.createElement("div");
+  title.className = "progress-title";
+  title.textContent = extraText
+    ? extraText
+    : `已录入 ${got} 样 · 客人已报 ${said} / ${total} 样`;
+  progressEl.appendChild(title);
+
+  order.items.filter(it => it.found).forEach(it => {
+    const div = document.createElement("div");
+    div.className = "done-item";
+    div.innerHTML = `<span>✓ ${it.name}</span><span>×${it.qty}</span>`;
+    progressEl.appendChild(div);
+  });
+}
+
+/* 往进度区底部放一个大按钮 */
+function addBigButton(text, onClick){
+  const btn = document.createElement("div");
+  btn.className = "big-btn";
+  btn.textContent = text;
+  btn.addEventListener("click", onClick);
+progressEl.appendChild(btn);
+}
+
+/* ============================================
+   客人上台
+   ============================================ */
+function nextCustomer(){
+  clearTimeout(announceTimer);
+  clearInterval(tickTimer);
+
+  order = {
+    items: createOrder(),
+    totalMs: 0,
+    remaining: 0,
+    timedOut: false,
+    timerStarted: false
+  };
+
+  phase = "announcing";
+
+  faceEl.textContent = "😋";
+  timerFill.style.width = "100%";
+  timerFill.style.background = "rgba(94,224,138,1)";
+
+  codeBuffer = "";
+  renderCode();
+  showMsg("", false);
+
+  bubbleEl.textContent = "…";
+  updateProgress();
+
+  announceStep(0);
+}
+
+/* 逐句播报：0 = 打招呼，1..n = 各商品，n+1 = 结束语 */
+function announceStep(step){
+  if(phase !== "announcing") return;
+
+  // 打招呼
+  if(step === 0){
+    bubbleEl.textContent = pick(OPENERS) + "我要买早饭。";
+    announceTimer = setTimeout(()=>announceStep(1), ANNOUNCE_GREET);
+    return;
+  }
+
+  // 报商品
+  if(step <= order.items.length){
+    const it = order.items[step - 1];
+    it.revealed = true;      // 这一样现在可以录了
+const qtyText = it.qty > 1 ? `，${it.qty}个` : "";
+    bubbleEl.textContent = pick(CONNECTORS) + it.name + qtyText + "。";
+
+    // 第一样报出来时，倒计时开始
+    if(!order.timerStarted){
+      order.timerStarted = true;
+      order.totalMs = (TIME_BASE + TIME_PER_KIND * order.items.length) * 1000;
+      order.remaining = order.totalMs;
+      tickTimer = setInterval(tick, 100);
+    }
+
+    updateProgress();
+    announceTimer = setTimeout(()=>announceStep(step + 1), randInt(ANNOUNCE_MIN, ANNOUNCE_MAX));
+    return;
+  }
+
+  // 报完
+  bubbleEl.textContent = pick(CLOSERS);
+  phase = "playing";
+  updateProgress("好了侯雅韵，快点录！");
+}
+
+/* ============================================
+   倒计时：到 0 不赶人，只标记超时
+   ============================================ */
+function tick(){
+  if(!order || order.timedOut) return;
+  if(phase === "done" || phase === "idle") return;
+
+  order.remaining -= 100;
+
+  const pct = Math.max(0, order.remaining / order.totalMs) * 100;
+  timerFill.style.width = pct + "%";
+
+  if(pct > 55)      timerFill.style.background = "rgba(94,224,138,1)";
+else if(pct > 25) timerFill.style.background = "rgba(255,207,92,1)";
+  else              timerFill.style.background = "rgba(255,90,90,1)";
+
+  if(order.remaining <= 0){
+    order.timedOut = true;
+    timerFill.style.width = "0%";
+    timerFill.style.background = "rgba(170,170,170,.6)";
+    clearInterval(tickTimer);
+    showMsg("超时了，但是算了，放你一马", false);
+    faceEl.textContent = "🫠";
+  }
+}
+
+/* ============================================
+   键盘：报单过程中也能输（只认已报出来的）
+   ============================================ */
+function pressKey(k){
+  if(phase !== "announcing" && phase !== "playing") return;
+
+  if(k === "ok"){
+    submitCode();
+    return;
+  }
+  if(k === "del"){
+    codeBuffer = codeBuffer.slice(0, -1);
+    renderCode();
+    return;
+  }
+  if(codeBuffer.length < 8){
+    codeBuffer += k;
+    renderCode();
+  }
+}
+
+function submitCode(){
+  if(phase !== "announcing" && phase !== "playing") return;
+  if(!order) return;
+
+  const code = codeBuffer;
+  if(code === "") return;
+
+  // 只匹配"客人已经报过、而且我还没录"的那一样
+const target = order.items.find(it => it.code === code && !it.found);
+
+  if(target && target.revealed){
+    target.found = true;
+    codeBuffer = "";
+    renderCode();
+    showMsg(`✓ ${target.name}`, true);
+    updateProgress();
+
+    if(order.items.every(it => it.found)){
+      orderSuccess();
+    }
+    return;
+  }
+
+  // 各种失败情况
+  const alreadyGot = order.items.find(it => it.code === code && it.found);
+  if(alreadyGot){
+    showMsg(`${alreadyGot.name} 录过了！！蠢得要鼠`, false);
+  }else if(target && !target.revealed){
+    showMsg("这啥啊？", false);
+  }else{
+    showMsg("编码不对，再去背<>", false);
+  }
+
+  codeDisplay.classList.remove("shake");
+  void codeDisplay.offsetWidth;
+  codeDisplay.classList.add("shake");
+
+  codeBuffer = "";
+  renderCode();
+
+  bump("wrong");   // 按错记一笔，但不扣时间、不惩罚
+}
+
+/* ============================================
+   整单完成：不自动下一位，等玩家点按钮
+   ============================================ */
+function orderSuccess(){
+  phase = "done";
+  clearInterval(tickTimer);
+  clearTimeout(announceTimer);
+if(order.timedOut){
+    bump("timeout");
+  }else{
+    bump("done");
+  }
+  refreshStats();
+
+  faceEl.textContent = "🥰";
+  bubbleEl.textContent = order.timedOut
+    ? "虽然超时了，但算你过了吧！"
+    : "牛逼啊！";
+
+  codeBuffer = "";
+  renderCode();
+  showMsg("", false);
+
+  updateProgress(order.timedOut ? "✅ 超时完成" : "✅ 完美完成，时间还剩");
+  addBigButton("下一位客人 →", ()=>{
+    if(phase === "done") nextCustomer();
+  });
+}
+
+/* ============================================
+   小票
+   ============================================ */
+function openReceipt(){
+  if(!order) return;
+
+  receiptBody.innerHTML = "";
+  order.items.forEach(it => {
+    const div = document.createElement("div");
+    div.className = "receipt-item" + (it.found ? " got" : "");
+    div.innerHTML = `
+      <span class="nm">${it.name}</span>
+      <span class="cd">${it.code}</span>
+      <span class="qty">×${it.qty}</span>
+    `;
+    receiptBody.appendChild(div);
+  });
+
+  receiptMask.classList.add("show");
+}
+
+function closeReceipt(){
+  receiptMask.classList.remove("show");
+}
+
+/* ============================================
+   记录
+   ============================================ */
+function formatDate(key){
+  const parts = key.split("-");
+  if(parts.length !== 3) return key;
+  const m = Number(parts[1]);
+  const d = Number(parts[2]);
+  return m + "月" + d + "日";
+}
+
+function openHistory(){
+  historyBody.innerHTML = "";
+
+  const keys = Object.keys(records).sort().reverse();   // 最近的在前
+
+  if(keys.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "hist-empty";
+    empty.textContent = "还没有记录，先做几单吧。";
+    historyBody.appendChild(empty);
+    historyMask.classList.add("show");
+    return;
+  }
+
+  const tk = todayKey();
+  let sumDone = 0, sumTo = 0, sumWr = 0;
+
+  keys.forEach(k => {
+    const d = records[k] || {};
+    const done = d.done || 0;
+    const to   = d.timeout || 0;
+    const wr   = d.wrong || 0;
+    sumDone += done; sumTo += to; sumWr += wr;
+
+    const row = document.createElement("div");
+    row.className = "hist-row";
+    row.innerHTML = `
+<span class="hist-date">${k === tk ? "今天 · " : ""}${formatDate(k)}</span>
+      <span class="hist-nums">
+        <span class="hist-done">完成${done}</span>
+        <span class="hist-to">超时${to}</span>
+        <span class="hist-wr">按错${wr}</span>
+      </span>
+    `;
+    historyBody.appendChild(row);
+  });
+
+  const total = document.createElement("div");
+  total.className = "hist-row";
+  total.style.borderBottom = "none";
+  total.innerHTML = `
+    <span class="hist-date">合计</span>
+    <span class="hist-nums">
+      <span class="hist-done">完成${sumDone}</span>
+      <span class="hist-to">超时${sumTo}</span>
+      <span class="hist-wr">按错${sumWr}</span>
+    </span>
+  `;
+  historyBody.appendChild(total);
+
+  const clearBtn = document.createElement("button");
+  clearBtn.className = "hist-clear";
+  clearBtn.textContent = "清空全部记录";
+  clearBtn.addEventListener("click", () => {
+    if(confirm("确定清空所有记录吗？清空后找不回来。")){
+      records = {};
+      saveRecords();
+      refreshStats();
+      closeHistory();
+}
+  });
+  historyBody.appendChild(clearBtn);
+
+  historyMask.classList.add("show");
+}
+
+function closeHistory(){
+  historyMask.classList.remove("show");
+}
+
+/* ============================================
+   事件
+   ============================================ */
+keypadEl.addEventListener("click", e => {
+  const btn = e.target.closest(".key");
+  if(!btn) return;
+  pressKey(btn.dataset.k);
+});
+
+ticketBtn.addEventListener("click", openReceipt);
+receiptClose.addEventListener("click", closeReceipt);
+receiptMask.addEventListener("click", e => {
+  if(e.target === receiptMask) closeReceipt();
+});
+
+historyBtn.addEventListener("click", openHistory);
+historyClose.addEventListener("click", closeHistory);
+historyMask.addEventListener("click", e => {
+  if(e.target === historyMask) closeHistory();
+});
+
+/* ============================================
+   开局：先显示「开始营业」按钮
+   ============================================ */
+refreshStats();
+renderCode();
+
+progressEl.innerHTML = "";
+const startTitle = document.createElement("div");
+startTitle.className = "progress-title";
+startTitle.textContent = "准备好了吗";
+progressEl.appendChild(startTitle);
+addBigButton("开始营业 →", nextCustomer);
+</script>
+
+</body>
+</html>
